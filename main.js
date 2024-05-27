@@ -94,7 +94,6 @@ for (const property in listPackage) {
         global.nodemodule[property] = require(property);
     } catch (e) {}
 }
-
 const langFile = (readFileSync(`${__dirname}/languages/${global.config.language || "en"}.lang`, {
     encoding: 'utf-8'
 })).split(/\r?\n|\r/);
@@ -202,10 +201,10 @@ function onBot() {
                             global.configModule[moduleName][envConfigKey] = global.config[moduleName][envConfigKey] ?? envConfig[envConfigKey];
                             global.config[moduleName][envConfigKey] = global.config[moduleName][envConfigKey] ?? envConfig[envConfigKey];
                         }
-                        var configPath = require('./config.json');
+                                                var configPath = require('./config.json');
                         configPath[moduleName] = envConfig;
                         writeFileSync(global.client.configPath, JSON.stringify(configPath, null, 4), 'utf-8');
-                                            }
+                    }
 
                     if (module.onLoad) {
                         const moduleData = {
