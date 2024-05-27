@@ -1,5 +1,5 @@
 const { readdirSync, readFileSync, writeFileSync } = require("fs-extra");
-const { join, resolve } = require('path')
+const { join, resolve } = require('path');
 const { execSync } = require('child_process');
 const config = require("./config.json");
 const chalk = require("chalk");
@@ -8,8 +8,6 @@ const listPackage = JSON.parse(readFileSync('./package.json')).dependencies;
 const fs = require("fs");
 const moment = require("moment-timezone");
 const logger = require("./utils/log.js");
-
-const PORT = process.env.PORT || 3000;
 
 global.client = new Object({
     commands: new Map(),
@@ -88,12 +86,12 @@ try {
     for (const key in configValue) global.config[key] = configValue[key];
     logger.loader("Config Loaded!");
 } catch (e) {
-    return logger.loader("Can't load file config!", "error")
+    return logger.loader("Can't load file config!", "error");
 }
 
 for (const property in listPackage) {
     try {
-        global.nodemodule[property] = require(property)
+        global.nodemodule[property] = require(property);
     } catch (e) {}
 }
 const langFile = (readFileSync(`${__dirname}/languages/${global.config.language || "en"}.lang`, {
@@ -125,10 +123,12 @@ global.getText = function (...args) {
 try {
     var appStateFile = resolve(join(global.client.mainPath, config.APPSTATEPATH || "appstate.json"));
     var appState = ((process.env.REPL_OWNER || process.env.PROCESSOR_IDENTIFIER) && (fs.readFileSync(appStateFile, 'utf8'))[0] != "[" && config.encryptSt) ? JSON.parse(global.utils.decryptState(fs.readFileSync(appStateFile, 'utf8'), (process.env.REPL_OWNER || process.env.PROCESSOR_IDENTIFIER))) : require(appStateFile);
-    logger.loader("Found the bot's appstate file.")
+    logger.loader("Found the bot's appstate file.");
 } catch (e) {
-    return logger.loader("Can't find the bot's appstate file.", "error")
+    return logger.loader("Can't find the bot's appstate file.", "error");
 }
+
+const PORT = process.env.PORT || 3000;
 
 function onBot() {
     const loginData = {};
@@ -136,11 +136,11 @@ function onBot() {
     login(loginData, async (loginError, loginApiData) => {
         if (loginError) {
             if (loginError.error == 'Error retrieving userID. This can be caused by a lot of things, including getting blocked by Facebook for logging in from an unknown location. Try logging in with a browser to verify.') {
-                console.log(loginError.error)
-                process.exit(0)
+                console.log(loginError.error);
+                process.exit(0);
             } else {
-                console.log(loginError)
-                return process.exit(0)
+                console.log(loginError);
+                return process.exit(0);
             }
         }
         console.log(chalk.blue(`============== LOGIN BOT ==============`));
@@ -150,12 +150,12 @@ function onBot() {
         d = JSON.stringify(d, null, '\x09');
         if ((process.env.REPL_OWNER || process.env.PROCESSOR_IDENTIFIER) && global.config.encryptSt) {
             d = await global.utils.encryptState(d, process.env.REPL_OWNER || process.env.PROCESSOR_IDENTIFIER);
-            writeFileSync(appStateFile, d)
+            writeFileSync(appStateFile, d);
         } else {
-            writeFileSync(appStateFile, d)
+            writeFileSync(appStateFile, d);
         }
         global.account.cookie = fbstate.map(i => i = i.key + "=" + i.value).join(";");
-        global.client.api = loginApiData
+        global.client.api = loginApiData;
         global.config.version = config.version,
         (async () => {
             const commandsPath = `${global.client.mainPath}/modules/commands`;
@@ -211,103 +211,69 @@ function onBot() {
                             api: loginApiData
                         };
                         try {
-                            module.onLoad(moduleData);
+                                                        module.onLoad(moduleData);
                         } catch (error) {
-                            const errorMessage = "Unable to load the onLoad function of the module."
-                            throw new Error(errorMessage, 'error');
+                            console.log(chalk.red(`[COMMAND] ${chalk.hex("#FFFF00")(command)} Failed to load onLoad!`));
                         }
                     }
 
-                    if (module.handleEvent) global.client.eventRegistered.push(config.name);
                     global.client.commands.set(config.name, module);
-                    global.loading(`${chalk.hex('#ff7100')(`[ COMMAND ]`)} ${chalk.hex("#FFFF00")(config.name)} succes`, "LOADED");
+                    console.log(chalk.hex("#00FF00")(`[COMMAND] ${chalk.hex("#FFFF00")(command)} Loaded successfully!`));
                 } catch (error) {
-                    global.loading.err(`${chalk.hex('#ff7100')(`[ COMMAND ]`)} ${chalk.hex("#FFFF00")(command)} fail `, "LOADED");
+                    console.log(chalk.red(`[COMMAND] ${chalk.hex("#FFFF00")(command)} Failed to load!`));
                 }
             }
-        })(),
-        (async () => {
-            const events = readdirSync(join(global.client.mainPath, 'modules/events')).filter(ev => ev.endsWith('.js') && !global.config.eventDisabled.includes(ev));
-            console.log(chalk.blue('============ LOADING EVENTS ============'));
-            for (const ev of events) {
+
+            const eventsPath = `${global.client.mainPath}/modules/events`;
+            const listEvent = readdirSync(eventsPath).filter(event => event.endsWith('.js') && !event.includes('example') && !global.config.eventDisabled.includes(event));
+            console.log(chalk.blue(`============ LOADING EVENTS ============`));
+            for (const event of listEvent) {
                 try {
-                    const event = require(join(global.client.mainPath, 'modules/events', ev));
-                    const { config, onLoad, run } = event;
-                    if (!config || !config.name || !run) {
-                        global.loading.err(`${chalk.hex('#ff7100')(`[ EVENT ]`)} ${chalk.hex("#FFFF00")(ev)} Module is not in the correct format. `, "LOADED");
+                    const module = require(`${eventsPath}/${event}`);
+                    const { config } = module;
+
+                    if (!config?.eventName) {
+                        console.log(chalk.red(`[EVENT] ${chalk.hex("#FFFF00")(event)} Module is not in the correct format!`));
                         continue;
                     }
-                    if (global.client.events.has(config.name)) {
-                        global.loading.err(`${chalk.hex('#ff7100')(`[ EVENT ]`)} ${chalk.hex("#FFFF00")(ev)} Module is already loaded!`, "LOADED");
+                    if (global.client.events.has(config.eventName || '')) {
+                        console.log(chalk.red(`[EVENT] ${chalk.hex("#FFFF00")(event)} Module is already loaded!`));
                         continue;
                     }
-                    if (config.dependencies) {
-                        const missingDeps = Object.keys(config.dependencies).filter(dep => !global.nodemodule[dep]);
-                        if (missingDeps.length) {
-                            const depsToInstall = missingDeps.map(dep => `${dep}${config.dependencies[dep] ? '@' + config.dependencies[dep] : ''}`).join(' ');
-                            execSync(`npm install --no-package-lock --no-save ${depsToInstall}`, {
-                                stdio: 'inherit',
-                                env: process.env,
-                                shell: true,
-                                cwd: join(__dirname, 'node_modules')
-                            });
-                            Object.keys(require.cache).forEach(key => delete require.cache[key]);
-                        }
-                    }
-                    if (config.envConfig) {
-                        const configModule = global.configModule[config.name] || (global.configModule[config.name] = {});
-                        const configData = global.config[config.name] || (global.config[config.name] = {});
-                        for (const evt in config.envConfig) {
-                            configModule[evt] = configData[evt] = config.envConfig[evt] || '';
-                        }
-                        writeFileSync(global.client.configPath, JSON.stringify({
-                            ...require(global.client.configPath),
-                            [config.name]: config.envConfig
-                        }, null, 2));
-                    }
-                    if (onLoad) {
-                        const eventData = {
-                            api: loginApiData
-                        };
-                        await onLoad(eventData);
-                    }
-                    global.client.events.set(config.name, event);
-                    global.loading(`${chalk.hex('#ff7100')(`[ EVENT ]`)} ${chalk.hex("#FFFF00")(config.name)} loaded successfully`, "LOADED");
-                } catch (err) {
-                    global.loading.err(`${chalk.hex('#ff7100')(`[ EVENT ]`)} ${chalk.hex("#FFFF00")(command)} fail `, "LOADED");
+                    global.client.events.set(config.eventName, module);
+                    console.log(chalk.hex("#00FF00")(`[EVENT] ${chalk.hex("#FFFF00")(event)} Loaded successfully!`));
+                } catch (error) {
+                    console.log(chalk.red(`[EVENT] ${chalk.hex("#FFFF00")(event)} Failed to load!`));
                 }
             }
+
+            console.log(chalk.blue(`============ BOT READY ============`));
+            global.client.api.listenMqtt((error, message) => {
+                if (error) {
+                    console.log(chalk.red(`Listen Error: ${error.message}`));
+                    return;
+                }
+                try {
+                    const handleEvent = global.client.events.get(message.type);
+                    if (handleEvent) handleEvent.run({ api: global.client.api, message });
+                } catch (error) {
+                    console.log(chalk.red(`Handle Message Error: ${error.message}`));
+                }
+            });
         })();
-        console.log(chalk.blue(`============== BOT START ==============`));
-        global.loading(`${chalk.hex('#ff7100')(`[ SUCCESS ]`)} Loaded ${global.client.commands.size} commands and ${global.client.events.size} events successfully`, "LOADED");
-        global.loading(`${chalk.hex('#ff7100')(`[ TIMESTART ]`)} Launch time: ${((Date.now() - global.client.timeStart) / 1000).toFixed()}s`, "LOADED");
-        const listener = require('./includes/listen')({ api: loginApiData });
-        global.custom = require('./custom')({ api: loginApiData });
-        global.handleListen = loginApiData.listenMqtt(async (error, message) => {
-            if (error) {
-                if (error.error === 'Not logged in.') {
-                    logger("Your bot account has been logged out!", 'LOGIN');
-                    return process.exit(1);
-                }
-                if (error.error === 'Not logged in') {
-                    logger("Your account has been checkpointed, please confirm your account and log in again!", 'CHECKPOINTS');
-                    return process.exit(0);
-                }
-                console.log(error);
-                return process.exit(0);
-            }
-            if (['presence', 'typ', 'read_receipt'].some(data => data === message.type)) return;
-            return listener(message);
-        });
     });
 }
 
-(async () => {
-    try {
-        console.log(chalk.blue(`============== DATABASE ==============`));
-        global.loading(`${chalk.hex('#ff7100')(`[ CONNECT ]`)} Connected to JSON database successfully!`, "DATABASE");
-        onBot();
-    } catch (error) {
-        global.loading.err(`${chalk.hex('#ff7100')(`[ CONNECT ]`)} Cannot connect to the JSON database.`, "DATABASE");
-    }
-})();
+onBot();
+
+const express = require('express');
+const app = express();
+
+app.get('/', (req, res) => {
+    res.send('Bot is running!');
+});
+
+app.listen(PORT, () => {
+    console.log(`Server is listening on port ${PORT}`);
+});
+
