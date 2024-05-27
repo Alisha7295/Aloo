@@ -314,7 +314,7 @@ function onBot() {
 
 // Server setup for Render deployment
 const app = express();
-const port = process.env.PORT || 55043;
+const port = process.env.PORT || 8888 || 9999;
 app.get('/', (req, res) => {
     res.send('Bot is running');
 });
