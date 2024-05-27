@@ -20,7 +20,7 @@
     ],
     "APPSTATEPATH": "appstate.json",
     "SETUP_WIN": {
-        "port": 8888,
+        "port": 8889,
         "use": "Nếu chạy nhiều hơn 1 file trên win thì thay đổi số này ở file thứ 2, 3, 4..."
     },
     "FCAOption": {
