@@ -1,7 +1,5 @@
-const express = require('express');
-const app = express();
 const { readdirSync, readFileSync, writeFileSync } = require("fs-extra");
-const { join, resolve } = require('path');
+const { join, resolve } = require('path')
 const { execSync } = require('child_process');
 const config = require("./config.json");
 const chalk = require("chalk");
@@ -62,12 +60,19 @@ global.data = new Object({
 });
 
 global.utils = require("./utils");
+
 global.loading = require("./utils/log");
+
 global.nodemodule = new Object();
+
 global.config = new Object();
+
 global.configModule = new Object();
+
 global.moduleData = new Array();
+
 global.language = new Object();
+
 global.account = new Object();
 
 var configValue;
@@ -166,107 +171,143 @@ function onBot() {
                         continue;
                     }
                     if (global.client.commands.has(config.name || '')) {
-                                                console.log(chalk.red(`[COMMAND] ${chalk.hex("#FFFF00")(command)} command already exists!`));
+                        console.log(chalk.red(`[COMMAND] ${chalk.hex("#FFFF00")(command)} Module is already loaded!`));
                         continue;
                     }
+                    const { dependencies, envConfig } = config;
+                    if (dependencies) {
+                        Object.entries(dependencies).forEach(([reqDependency, dependencyVersion]) => {
+                            if (listPackage[reqDependency]) return;
+                            try {
+                                execSync(`npm --package-lock false --save install ${reqDependency}${dependencyVersion ? `@${dependencyVersion}` : ''}`, {
+                                    stdio: 'inherit',
+                                    env: process.env,
+                                    shell: true,
+                                    cwd: join(__dirname, 'node_modules')
+                                });
+                                require.cache = {};
+                            } catch (error) {
+                                const errorMessage = `[PACKAGE] Failed to install package ${reqDependency} for module`;
+                                global.loading.err(chalk.hex('#ff7100')(errorMessage), 'LOADED');
+                            }
+                        });
+                    }
+
+                    if (envConfig) {
+                        const moduleName = config.name;
+                        global.configModule[moduleName] = global.configModule[moduleName] || {};
+                        global.config[moduleName] = global.config[moduleName] || {};
+                        for (const envConfigKey in envConfig) {
+                            global.configModule[moduleName][envConfigKey] = global.config[moduleName][envConfigKey] ?? envConfig[envConfigKey];
+                            global.config[moduleName][envConfigKey] = global.config[moduleName][envConfigKey] ?? envConfig[envConfigKey];
+                        }
+                        var configPath = require('./config.json');
+                        configPath[moduleName] = envConfig;
+                        writeFileSync(global.client.configPath, JSON.stringify(configPath, null, 4), 'utf-8');
+                    }
+
+                    if (module.onLoad) {
+                        const moduleData = {
+                            api: loginApiData
+                        };
+                        try {
+                            module.onLoad(moduleData);
+                        } catch (error) {
+                            const errorMessage = "Unable to load the onLoad function of the module."
+                            throw new Error(errorMessage, 'error');
+                        }
+                    }
+
+                    if (module.handleEvent) global.client.eventRegistered.push(config.name);
                     global.client.commands.set(config.name, module);
-                    console.log(chalk.green(`[COMMAND] ${chalk.hex("#00FF00")(command)} Module loaded!`));
-                } catch (e) {
-                    console.log(chalk.red(`[COMMAND] ${chalk.hex("#FFFF00")(command)} Module can't be loaded!\n`), e);
+                    global.loading(`${chalk.hex('#ff7100')(`[ COMMAND ]`)} ${chalk.hex("#FFFF00")(config.name)} succes`, "LOADED");
+                } catch (error) {
+                    global.loading.err(`${chalk.hex('#ff7100')(`[ COMMAND ]`)} ${chalk.hex("#FFFF00")(command)} fail `, "LOADED");
                 }
             }
-
-            const eventsPath = `${global.client.mainPath}/modules/events`;
-            const listEvent = readdirSync(eventsPath).filter(event => event.endsWith('.js') && !event.includes('example') && !global.config.eventDisabled.includes(event));
-            console.log(chalk.blue(`============ LOADING EVENTS ============`));
-            for (const event of listEvent) {
+        })(),
+        (async () => {
+            const events = readdirSync(join(global.client.mainPath, 'modules/events')).filter(ev => ev.endsWith('.js') && !global.config.eventDisabled.includes(ev));
+            console.log(chalk.blue('============ LOADING EVENTS ============'));
+            for (const ev of events) {
                 try {
-                    const module = require(`${eventsPath}/${event}`);
-                    const { config } = module;
-                    if (!config?.eventName) {
-                        console.log(chalk.red(`[EVENT] ${chalk.hex("#FFFF00")(event)} Module is not in the correct format!`));
+                    const event = require(join(global.client.mainPath, 'modules/events', ev));
+                    const { config, onLoad, run } = event;
+                    if (!config || !config.name || !run) {
+                        global.loading.err(`${chalk.hex('#ff7100')(`[ EVENT ]`)} ${chalk.hex("#FFFF00")(ev)} Module is not in the correct format. `, "LOADED");
                         continue;
                     }
-                    if (global.client.events.has(config.eventName)) {
-                        console.log(chalk.red(`[EVENT] ${chalk.hex("#FFFF00")(event)} event already exists!`));
+                    if (global.client.events.has(config.name)) {
+                        global.loading.err(`${chalk.hex('#ff7100')(`[ EVENT ]`)} ${chalk.hex("#FFFF00")(ev)} Module is already loaded!`, "LOADED");
                         continue;
                     }
-                    global.client.events.set(config.eventName, module);
-                    console.log(chalk.green(`[EVENT] ${chalk.hex("#00FF00")(event)} Module loaded!`));
-                } catch (e) {
-                    console.log(chalk.red(`[EVENT] ${chalk.hex("#FFFF00")(event)} Module can't be loaded!\n`), e);
-                }
-            }
-
-            const langPath = `${global.client.mainPath}/languages`;
-            const listLang = readdirSync(langPath).filter(lang => lang.endsWith('.lang'));
-            console.log(chalk.blue(`============ LOADING LANGUAGES ============`));
-            for (const lang of listLang) {
-                try {
-                    const langData = readFileSync(`${langPath}/${lang}`, { encoding: 'utf-8' });
-                    const langName = lang.replace('.lang', '');
-                    global.language[langName] = {};
-                    const langFile = langData.split(/\r?\n|\r/).filter(item => item.indexOf('#') !== 0 && item !== '');
-                    for (const item of langFile) {
-                        const getSeparator = item.indexOf('=');
-                        const itemKey = item.slice(0, getSeparator);
-                        const itemValue = item.slice(getSeparator + 1, item.length);
-                        const head = itemKey.slice(0, itemKey.indexOf('.'));
-                        const key = itemKey.replace(head + '.', '');
-                        const value = itemValue.replace(/\\n/gi, '\n');
-                        if (typeof global.language[head] === "undefined") global.language[head] = {};
-                        global.language[head][key] = value;
+                    if (config.dependencies) {
+                        const missingDeps = Object.keys(config.dependencies).filter(dep => !global.nodemodule[dep]);
+                        if (missingDeps.length) {
+                            const depsToInstall = missingDeps.map(dep => `${dep}${config.dependencies[dep] ? '@' + config.dependencies[dep] : ''}`).join(' ');
+                            execSync(`npm install --no-package-lock --no-save ${depsToInstall}`, {
+                                stdio: 'inherit',
+                                env: process.env,
+                                shell: true,
+                                cwd: join(__dirname, 'node_modules')
+                            });
+                            Object.keys(require.cache).forEach(key => delete require.cache[key]);
+                        }
                     }
-                    console.log(chalk.green(`[LANGUAGE] ${chalk.hex("#00FF00")(lang)} Language loaded!`));
-                } catch (e) {
-                    console.log(chalk.red(`[LANGUAGE] ${chalk.hex("#FFFF00")(lang)} Language can't be loaded!\n`), e);
-                }
-            }
-
-            global.getText = function (...args) {
-                const langText = global.language;
-                if (!langText.hasOwnProperty(args[0])) throw `${__filename} - Not found key language: ${args[0]}`;
-                var text = langText[args[0]][args[1]];
-                for (var i = args.length - 1; i > 0; i--) {
-                    const regEx = RegExp(`%${i}`, 'g');
-                    text = text.replace(regEx, args[i + 1]);
-                }
-                return text;
-            }
-
-            const utilsPath = `${global.client.mainPath}/modules/utils`;
-            const listUtils = readdirSync(utilsPath).filter(util => util.endsWith('.js'));
-            console.log(chalk.blue(`============ LOADING UTILITIES ============`));
-            for (const util of listUtils) {
-                try {
-                    const module = require(`${utilsPath}/${util}`);
-                    const { config } = module;
-                    if (!config?.utilName) {
-                        console.log(chalk.red(`[UTIL] ${chalk.hex("#FFFF00")(util)} Module is not in the correct format!`));
-                        continue;
+                    if (config.envConfig) {
+                        const configModule = global.configModule[config.name] || (global.configModule[config.name] = {});
+                        const configData = global.config[config.name] || (global.config[config.name] = {});
+                        for (const evt in config.envConfig) {
+                            configModule[evt] = configData[evt] = config.envConfig[evt] || '';
+                        }
+                        writeFileSync(global.client.configPath, JSON.stringify({
+                            ...require(global.client.configPath),
+                            [config.name]: config.envConfig
+                        }, null, 2));
                     }
-                    if (global.utils[config.utilName]) {
-                        console.log(chalk.red(`[UTIL] ${chalk.hex("#FFFF00")(util)} utility already exists!`));
-                        continue;
+                    if (onLoad) {
+                        const eventData = {
+                            api: loginApiData
+                        };
+                        await onLoad(eventData);
                     }
-                    global.utils[config.utilName] = module;
-                    console.log(chalk.green(`[UTIL] ${chalk.hex("#00FF00")(util)} Module loaded!`));
-                } catch (e) {
-                    console.log(chalk.red(`[UTIL] ${chalk.hex("#FFFF00")(util)} Module can't be loaded!\n`), e);
+                    global.client.events.set(config.name, event);
+                    global.loading(`${chalk.hex('#ff7100')(`[ EVENT ]`)} ${chalk.hex("#FFFF00")(config.name)} loaded successfully`, "LOADED");
+                } catch (err) {
+                    global.loading.err(`${chalk.hex('#ff7100')(`[ EVENT ]`)} ${chalk.hex("#FFFF00")(command)} fail `, "LOADED");
                 }
             }
-
-            console.log(chalk.blue(`============ BOT STARTED ============`));
         })();
+        console.log(chalk.blue(`============== BOT START ==============`));
+        global.loading(`${chalk.hex('#ff7100')(`[ SUCCESS ]`)} Loaded ${global.client.commands.size} commands and ${global.client.events.size} events successfully`, "LOADED");
+        global.loading(`${chalk.hex('#ff7100')(`[ TIMESTART ]`)} Launch time: ${((Date.now() - global.client.timeStart) / 1000).toFixed()}s`, "LOADED");
+        const listener = require('./includes/listen')({ api: loginApiData });
+        global.custom = require('./custom')({ api: loginApiData });
+        global.handleListen = loginApiData.listenMqtt(async (error, message) => {
+            if (error) {
+                if (error.error === 'Not logged in.') {
+                    logger("Your bot account has been logged out!", 'LOGIN');
+                    return process.exit(1);
+                }
+                if (error.error === 'Not logged in') {
+                    logger("Your account has been checkpointed, please confirm your account and log in again!", 'CHECKPOINTS');
+                    return process.exit(0);
+                }
+                console.log(error);
+                return process.exit(0);
+            }
+            if (['presence', 'typ', 'read_receipt'].some(data => data === message.type)) return;
+            return listener(message);
+        });
     });
 }
 
-app.get('/', (req, res) => {
-    res.send('Disme Bot is running!');
-});
-
-app.listen(PORT, () => {
-    console.log(`Server is listening on port ${PORT}`);
-});
-
-onBot();
+(async () => {
+    try {
+        console.log(chalk.blue(`============== DATABASE ==============`));
+        global.loading(`${chalk.hex('#ff7100')(`[ CONNECT ]`)} Connected to JSON database successfully!`, "DATABASE");
+        onBot();
+    } catch (error) {
+        global.loading.err(`${chalk.hex('#ff7100')(`[ CONNECT ]`)} Cannot connect to the JSON database.`, "DATABASE");
+    }
+})();
