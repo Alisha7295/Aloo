@@ -3,7 +3,7 @@ const express = require("express");
 const app = express();
 const logger = require("./utils/log.js");
 
-const PORT = process.env.PORT || 8888 || 9999;
+const PORT = process.env.PORT || 8888;
 
 app.get("/", function (request, response) {
   const result =
@@ -29,7 +29,7 @@ async function startBot(index) {
   });
 
   child.on("close", async (codeExit) => {
-    if (codeExit !== 0 || global.countRestart && global.countRestart < 5) {
+    if (codeExit !== 0 || (global.countRestart && global.countRestart < 5)) {
       await startBot(index);
       return;
     }
