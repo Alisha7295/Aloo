@@ -2,9 +2,9 @@
   "name": "disme_bot",
   "version": "3.0.0",
   "description": "This is Disme Bot remade by D-Jukie from Miraiv2 source code",
-  "main": "main.js",
+  "main": "index.js",
   "scripts": {
-    "start": "node main.js",
+    "start": "node index.js",
     "login": "node login",
     "test": "node --trace-warnings --use_strict --async-stack-traces main.js"
   },
@@ -22,7 +22,7 @@
     "chalk": "^4.1.2",
     "cheerio": "^1.0.0-rc.12",
     "child_process": "^1.0.2",
-    "crypto": "^1.0.1",
+    "crypto": "",
     "eval": "^0.1.8",
     "express": "^4.17.3",
     "fast-speedtest-api": "^0.3.2",
@@ -39,13 +39,13 @@
     "request": "^2.88.2",
     "requests": "^0.3.0",
     "sequelize": "^6.17.0",
-    "string-similarity": "^4.0.4",
+    "string-similarity": "",
     "systeminformation": "^5.11.9",
     "totp-generator": "^0.0.13",
     "tweetnacl-sealedbox-js": "^1.2.0",
     "tweetnacl-util": "^0.15.1",
     "websocket-stream": "^5.5.2",
-    "ytdl-core": "^4.11.0"
+    "ytdl-core": ""
   },
   "bugs": {
     "url": "https://github.com/D-Jukie/Disme-Bot/issues"
