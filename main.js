@@ -10,7 +10,7 @@ const moment = require("moment-timezone");
 const logger = require("./utils/log.js");
 
 // Port configuration
-const port = process.env.PORT || config.PORT || 8888;
+const port = process.env.PORT || config.PORT || 8889;
 
 // Create the server and listen on the specified port
 const express = require('express');
