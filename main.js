@@ -313,11 +313,14 @@ function onBot() {
 })();
 
 // Server setup for Render deployment
+const express = require('express');
 const app = express();
-const port = process.env.PORT || 8888 || 9999;
+const port = 8888;
+
 app.get('/', (req, res) => {
-    res.send('Bot is running');
+    res.send('Server is running on port 8888');
 });
+
 app.listen(port, () => {
     console.log(`Server is listening on port ${port}`);
 });
